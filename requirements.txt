@@ -1,2 +1,2 @@
 streamlit
-python-aternos
+python-aternos==2.1.2
