@@ -1,64 +1,62 @@
 import streamlit as st
-from python_aternos import Client
-import time
+import requests
 
-st.set_page_config(page_title="Taha's MC Panel", page_icon="🎮")
+st.set_page_config(page_title="Minefort Panel", page_icon="⛏️")
 
-st.title("🎮 Aternos Control Panel")
-st.write("Manual Login Mode")
+st.title("⛏️ Minefort Server Manager")
+st.markdown("---")
 
-# Login UI in Sidebar or Main Page
+# Sidebar for Credentials
 with st.sidebar:
-    st.header("🔑 Aternos Login")
-    user_input = st.text_input("Username", placeholder="Taha_123")
-    pass_input = st.text_input("Password", type="password")
-    login_btn = st.button("Connect to Aternos")
+    st.header("🔑 Credentials")
+    minefort_key = st.text_input("Minefort API Key", type="password")
+    server_id = st.text_input("Server ID (e.g., srv-12345)")
 
-if login_btn:
-    if user_input and pass_input:
-        try:
-            # Login process
-            at = Client.from_credentials(user_input, pass_input)
-            st.session_state.at = at
-            st.success("✅ Connected Successfully!")
-        except Exception as e:
-            st.error(f"❌ Login Failed: {e}")
-            if "503" in str(e):
-                st.info("Aternos is blocking the script. Try logging into Aternos.org on your phone first.")
-    else:
-        st.warning("Please enter both Username and Password.")
+# API Base URL (Minefort v1)
+BASE_URL = "https://api.minefort.com/v1"
 
-# Dashboard Logic
-if "at" in st.session_state:
-    at = st.session_state.at
+def manage_server(action):
+    headers = {
+        "Authorization": f"Bearer {minefort_key}",
+        "Content-Type": "application/json"
+    }
+    # Minefort API endpoint for power actions
+    url = f"{BASE_URL}/server/{server_id}/power/{action}"
+    
     try:
-        serv = at.list_servers()[0]
-        
-        st.divider()
-        st.subheader(f"📍 Server: {serv.address}")
-        st.write(f"**Status:** {serv.status.upper()}")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🚀 Start Server", use_container_width=True):
-                serv.start()
-                st.toast("Starting...")
-                time.sleep(2)
-                st.rerun()
-        
-        with col2:
-            if st.button("🛑 Stop Server", use_container_width=True):
-                serv.stop()
-                st.toast("Stopping...")
-                time.sleep(2)
-                st.rerun()
-
-        with st.expander("📝 Server Logs"):
-            if st.button("Fetch Logs"):
-                st.code(serv.get_log())
-
+        response = requests.post(url, headers=headers)
+        if response.status_code == 200:
+            return True, "Success!"
+        else:
+            return False, f"Error {response.status_code}: {response.text}"
     except Exception as e:
-        st.error(f"Could not fetch server: {e}")
+        return False, str(e)
 
+if minefort_key and server_id:
+    st.success(f"Connected to Server ID: {server_id}")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🚀 Start Minefort", use_container_width=True):
+            success, msg = manage_server("start")
+            if success: st.balloons()
+            else: st.error(msg)
+            
+    with col2:
+        if st.button("🛑 Stop Minefort", use_container_width=True):
+            success, msg = manage_server("stop")
+            if success: st.warning("Server Stopping...")
+            else: st.error(msg)
+            
+    st.markdown("---")
+    if st.button("🔄 Check Status"):
+        # Status fetch logic
+        status_url = f"{BASE_URL}/server/{server_id}"
+        headers = {"Authorization": f"Bearer {minefort_key}"}
+        res = requests.get(status_url, headers=headers)
+        if res.status_code == 200:
+            data = res.json()
+            st.json(data) # Server ki details dikhayega
 else:
-    st.info("👈 Please enter your credentials in the sidebar to start.")
+    st.info("👈 Please enter your Minefort API Key and Server ID in the sidebar.")
