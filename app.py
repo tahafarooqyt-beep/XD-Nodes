@@ -1,44 +1,40 @@
 import streamlit as st
+import os
+import subprocess
 import requests
 
-st.set_page_config(page_title="Taha's Minehut Manager", page_icon="⛏️")
+st.title("🖥️ Taha Personal Cloud Hosting")
 
-st.title("⛏️ Minehut Server Control")
-st.info("No 503 Errors - Direct API Access")
+# 1. Badi files download karne ka function
+def download_file(url, filename):
+    if not os.path.exists(filename):
+        with st.spinner(f"Downloading {filename}..."):
+            r = requests.get(url)
+            with open(filename, 'wb') as f:
+                f.write(r.content)
+        st.success(f"{filename} Downloaded!")
 
-# User Input
-server_name = st.text_input("Enter your Minehut Server Name (e.g., TahaNodes)", "TahaNodes")
+# 2. Server Start Function
+def start_server():
+    # Streamlit ke RAM ke mutabiq 800MB allot karenge
+    cmd = "java -Xmx800M -Xms512M -jar server.jar nogui"
+    process = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    return process
 
-if server_name:
-    # Minehut API call
-    url = f"https://api.minehut.com/server/{server_name}?byName=true"
+# --- Setup ---
+# Agar aapka server.jar GitHub par nahi hai, toh hum yahan link de sakte hain
+# Example: Purpur ya Spigot ka download link
+jar_url = "https://api.purpurmc.org/v2/purpur/1.21.1/latest/download" 
+
+if st.button("🚀 Start My Hosting"):
+    download_file(jar_url, "server.jar")
     
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            server = data['server']
-            
-            # Status Metrics
-            is_online = server['online']
-            st.subheader(f"📍 {server['name'].upper()}")
-            
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Status", "🟢 Online" if is_online else "🔴 Offline")
-            col2.metric("Players", f"{server['playerCount']}/{server['maxPlayers']}")
-            col3.metric("MOTD", server['motd'])
+    # EULA accept karna zaroori hai
+    with open("eula.txt", "w") as f:
+        f.write("eula=true")
+        
+    proc = start_server()
+    st.success("Taha OG SMP is now LIVE on Cloud!")
+    st.info("Laptop band kar dein, ye chalta rahega.")
 
-            st.markdown("---")
-            
-            # Additional Info
-            with st.expander("Detailed Server Info"):
-                st.write(f"**IP Address:** {server['name']}.minehut.gg")
-                st.write(f"**Platform:** {server['server_version_type']}")
-                st.write(f"**Active Plugins:** {len(server['active_plugins'])}")
-
-        else:
-            st.error("Server not found! Make sure the name is correct.")
-    except Exception as e:
-        st.error(f"Connection Error: {e}")
-
-st.caption("Note: Free servers hibernate when empty but auto-start on join.")
+st.sidebar.warning("Note: Streamlit 1GB RAM limit rakhta hai.")
