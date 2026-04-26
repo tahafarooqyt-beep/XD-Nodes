@@ -3,39 +3,48 @@ import os
 import subprocess
 import requests
 
-st.title("🖥️ Taha Pro Nodes")
+st.set_page_config(page_title="Taha Cloud Host", page_icon="🎮")
+st.title("🚀 Taha Pro Cloud Hosting")
 
-# 1. Server Download Function (Direct from Internet)
-def download_server():
-    jar_url = "https://api.purpurmc.org/v2/purpur/1.21.1/latest/download" 
-    if not os.path.exists("server.jar"):
-        with st.spinner("Downloading Minecraft Server Engine... Please wait."):
-            r = requests.get(jar_url)
-            with open("server.jar", "wb") as f:
-                f.write(r.content)
+# Server files ke naam
+JAR_FILE = "server.jar"
+# Minecraft 1.21.1 ka official download link
+DOWNLOAD_URL = "https://piston-data.mojang.com/v1/objects/45035533e69f3503c6d0358e60144f2396244c46/server.jar"
+
+# 1. Automatic Download Function
+def setup_files():
+    if not os.path.exists(JAR_FILE):
+        with st.spinner("Downloading Minecraft Engine (1.21.1)..."):
+            response = requests.get(DOWNLOAD_URL)
+            with open(JAR_FILE, "wb") as f:
+                f.write(response.content)
         st.success("Download Complete!")
-
-# 2. Start Server Function
-def start_server():
+    
+    # EULA Accept karna
     if not os.path.exists("eula.txt"):
         with open("eula.txt", "w") as f:
             f.write("eula=true")
+        st.info("EULA Accepted.")
 
-    # Command to run server
-    cmd = ["java", "-Xmx800M", "-Xms512M", "-jar", "server.jar", "nogui"]
-    try:
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        return process
-    except Exception as e:
-        st.error(f"Error: {e}")
-        return None
+# 2. Start Server Function
+def start_mc():
+    # Streamlit ki RAM (1GB) ke mutabiq settings
+    cmd = ["java", "-Xmx800M", "-Xms512M", "-jar", JAR_FILE, "nogui"]
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    return process
 
-# --- UI Buttons ---
-if st.button("📥 Download & Setup"):
-    download_server()
+# --- Dashboard UI ---
+if st.button("🛠️ Setup & Install"):
+    setup_files()
 
-if st.button("🚀 Start Hosting"):
-    proc = start_server()
-    if proc:
-        st.success("Server is booting up! Laptop band kar sakte hain.")
-        st.info("Check 'Manage App' logs to see the server console.")
+if st.button("▶️ Start Server"):
+    if os.path.exists(JAR_FILE):
+        proc = start_mc()
+        st.success("Server Online! Aap laptop band kar sakte hain.")
+        st.warning("Note: IP dhoondne ke liye 'Manage App' ke Logs check karein.")
+    else:
+        st.error("Pehle Setup wala button dabayein!")
+
+st.sidebar.markdown("---")
+st.sidebar.write("Owner: **Taha Farooq**")
+st.sidebar.write("Status: **Free VPS Mode**")
