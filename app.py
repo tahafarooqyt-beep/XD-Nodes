@@ -2,91 +2,63 @@ import streamlit as st
 from python_aternos import Client
 import time
 
-# Page Configuration
-st.set_page_config(page_title="XD-Nodes Control", page_icon="🎮", layout="centered")
+st.set_page_config(page_title="Taha's MC Panel", page_icon="🎮")
 
-st.title("🎮 XD-Nodes Aternos Panel")
-st.markdown("---")
+st.title("🎮 Aternos Control Panel")
+st.write("Manual Login Mode")
 
-# 1. Secure Login using Streamlit Secrets
-try:
-    USER = st.secrets["AT_USER"]
-    PASS = st.secrets["AT_PASS"]
-except KeyError:
-    st.error("❌ Secrets not found! Go to Advanced Settings > Secrets and add AT_USER and AT_PASS.")
-    st.stop()
+# Login UI in Sidebar or Main Page
+with st.sidebar:
+    st.header("🔑 Aternos Login")
+    user_input = st.text_input("Username", placeholder="Taha_123")
+    pass_input = st.text_input("Password", type="password")
+    login_btn = st.button("Connect to Aternos")
 
-# 2. Initialize Connection
-if "at" not in st.session_state:
+if login_btn:
+    if user_input and pass_input:
+        try:
+            # Login process
+            at = Client.from_credentials(user_input, pass_input)
+            st.session_state.at = at
+            st.success("✅ Connected Successfully!")
+        except Exception as e:
+            st.error(f"❌ Login Failed: {e}")
+            if "503" in str(e):
+                st.info("Aternos is blocking the script. Try logging into Aternos.org on your phone first.")
+    else:
+        st.warning("Please enter both Username and Password.")
+
+# Dashboard Logic
+if "at" in st.session_state:
+    at = st.session_state.at
     try:
-        at = Client.from_credentials(USER, PASS)
-        st.session_state.at = at
-        st.success("✅ Connected to Aternos!")
+        serv = at.list_servers()[0]
+        
+        st.divider()
+        st.subheader(f"📍 Server: {serv.address}")
+        st.write(f"**Status:** {serv.status.upper()}")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🚀 Start Server", use_container_width=True):
+                serv.start()
+                st.toast("Starting...")
+                time.sleep(2)
+                st.rerun()
+        
+        with col2:
+            if st.button("🛑 Stop Server", use_container_width=True):
+                serv.stop()
+                st.toast("Stopping...")
+                time.sleep(2)
+                st.rerun()
+
+        with st.expander("📝 Server Logs"):
+            if st.button("Fetch Logs"):
+                st.code(serv.get_log())
+
     except Exception as e:
-        st.error(f"❌ Login Failed: {e}")
-        st.stop()
+        st.error(f"Could not fetch server: {e}")
 
-at = st.session_state.at
-
-# 3. Server Selection
-try:
-    servers = at.list_servers()
-    # Select the first server by default
-    serv = servers[0]
-except Exception as e:
-    st.error("❌ No servers found in this account.")
-    st.stop()
-
-# 4. Dashboard UI
-st.subheader(f"📍 Server: {serv.address}")
-status_color = "🟢" if serv.status == "online" else "🔴"
-st.write(f"**Current Status:** {status_color} {serv.status.upper()}")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    if st.button("🚀 Start Server", use_container_width=True):
-        try:
-            serv.start()
-            st.toast("Starting server...")
-            time.sleep(2)
-            st.rerun()
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-with col2:
-    if st.button("🛑 Stop Server", use_container_width=True):
-        try:
-            serv.stop()
-            st.toast("Stopping server...")
-            time.sleep(2)
-            st.rerun()
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-with col3:
-    if st.button("🔄 Refresh Status", use_container_width=True):
-        st.rerun()
-
-st.markdown("---")
-
-# 5. Console & Logs
-with st.expander("📝 View Server Logs"):
-    if st.button("Fetch Latest Logs"):
-        log = serv.get_log()
-        if log:
-            st.code(log, language="text")
-        else:
-            st.info("No logs available right now.")
-
-with st.expander("💻 Send Command"):
-    cmd = st.text_input("Enter command (e.g. /op Taha)")
-    if st.button("Send"):
-        if cmd:
-            serv.send_command(cmd)
-            st.success(f"Command '{cmd}' sent!")
-        else:
-            st.warning("Please enter a command first.")
-
-# Footer
-st.caption("Powered by XD-Nodes | 24/7 Streamlit Hosting")
+else:
+    st.info("👈 Please enter your credentials in the sidebar to start.")
